@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -39,6 +40,8 @@ namespace SiNet
                 {
                     DLog.LogError(string.Format("SERVER: Failed to start server on {0}:{1}", this.connectionSettings.ip, this.connectionSettings.port));
                 }
+
+                OnClientConnected += StartListeningToClient;
             }
 
             private int StartListening()
@@ -99,10 +102,12 @@ namespace SiNet
 
                 string sendClientIdMessage = MessageUtility.CreateMessage(
                     EventType.CLIENT_ID_SENT_TO_CLIENT,
-                    new Client.ClientConnectionResponseData()
-                    {
-                        clientId = connectedClientInfo.clientId
-                    }
+                    JsonConvert.SerializeObject(
+                        new Client.ClientConnectionResponseData()
+                        {
+                            clientId = connectedClientInfo.clientId
+                        }
+                    )
                 );
                 clientSocket.Send(System.Text.Encoding.ASCII.GetBytes(sendClientIdMessage));
 
@@ -121,6 +126,33 @@ namespace SiNet
 
                 OnClientConnected?.Invoke(connectedClientInfo);
                 DLog.Log(string.Format("SERVER: Client connected from {0}. Total Clients: {1}", clientSocket.RemoteEndPoint.ToString(), connectedClients.Count));
+            }
+
+            private async void StartListeningToClient(ConnectedClientInfo clientInfo)
+            {
+                DLog.Log(string.Format("SERVER: Listening to client {0}", clientInfo.clientId));
+                while (clientInfo.socket.Connected)
+                {
+                    int bytesRead = await clientInfo.socket.ReceiveAsync(clientInfo.buffer, SocketFlags.None);
+                    if (bytesRead == 0)
+                    {
+                        DisconnectClient(clientInfo);
+                        break;
+                    }
+                    Message message = MessageUtility.ParseMessage(System.Text.Encoding.ASCII.GetString(clientInfo.buffer, 0, bytesRead));
+                    if (message == null)
+                    {
+                        DLog.LogError(string.Format("SERVER: Invalid message received: {0}", System.Text.Encoding.ASCII.GetString(clientInfo.buffer, 0, bytesRead)));
+                    }
+                }
+                DLog.Log(string.Format("SERVER: Stop listening to client {0}", clientInfo.clientId));
+            }
+
+            private void DisconnectClient(ConnectedClientInfo clientInfo)
+            {
+                clientInfo.socket.Close();
+                connectedClients.Remove(clientInfo.clientId);
+                DLog.Log(string.Format("SERVER: Client {0} disconnected", clientInfo.clientId));
             }
         }
 

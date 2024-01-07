@@ -70,7 +70,7 @@ namespace SiNet
                 );
                 try
                 {
-                    await clientSocket.SendAsync(Encoding.ASCII.GetBytes(disconnectMessage), SocketFlags.None);
+                    clientSocket.Send(Encoding.ASCII.GetBytes(disconnectMessage));
                 }
                 catch (Exception e)
                 {
@@ -93,6 +93,7 @@ namespace SiNet
                     return;
                 }
 
+                DLog.Log(string.Format("CLIENT: Sending message to server: {0}", message));
                 clientSocket.Send(Encoding.ASCII.GetBytes(message));
             }
         }
