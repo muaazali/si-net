@@ -1,4 +1,3 @@
-using System;
 using Newtonsoft.Json;
 
 namespace SiNet
@@ -11,7 +10,7 @@ namespace SiNet
 
     public static class MessageUtility
     {
-        public static string CreateMessage(string eventType, string data = null)
+        public static string CreateMessageJson(string eventType, string data = null)
         {
             return JsonConvert.SerializeObject(new Message()
             {

@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -17,9 +15,11 @@ namespace SiNet
 
             #region Events
             public System.Action<ConnectedClientInfo> OnClientConnected;
+            public System.Action<ConnectedClientInfo> OnClientDisconnected;
             #endregion
 
             private Dictionary<string, ConnectedClientInfo> connectedClients = new Dictionary<string, ConnectedClientInfo>();
+            private Dictionary<string, System.Action<ConnectedClientInfo, Message>> eventHandlers = new Dictionary<string, System.Action<ConnectedClientInfo, Message>>();
 
             private Socket serverSocket;
             private bool shouldAcceptClients = true;
@@ -42,6 +42,7 @@ namespace SiNet
                 }
 
                 OnClientConnected += StartListeningToClient;
+
             }
 
             private int StartListening()
@@ -54,7 +55,7 @@ namespace SiNet
                     DLog.Log(string.Format("SERVER: Server started on {0}:{1}", connectionSettings.ip, connectionSettings.port));
                     return 0;
                 }
-                catch (Exception e)
+                catch (System.Exception e)
                 {
                     DLog.LogError(e.ToString());
                     return 1;
@@ -83,7 +84,7 @@ namespace SiNet
             private void ProcessClientConnection(Socket clientSocket)
             {
                 string[] clientIP = clientSocket.RemoteEndPoint.ToString().Split(':');
-                ConnectedClientInfo connectedClientInfo = new ConnectedClientInfo(clientIP[0], int.Parse(clientIP[1]), clientSocket, Guid.NewGuid().ToString());
+                ConnectedClientInfo connectedClientInfo = new ConnectedClientInfo(clientIP[0], int.Parse(clientIP[1]), clientSocket, System.Guid.NewGuid().ToString());
 
                 if (connectedClients.Count < ConfigDefaults.MAX_CLIENTS)
                 {
@@ -100,7 +101,7 @@ namespace SiNet
                     StopAcceptingClients();
                 }
 
-                string sendClientIdMessage = MessageUtility.CreateMessage(
+                string sendClientIdMessage = MessageUtility.CreateMessageJson(
                     EventType.CLIENT_ID_SENT_TO_CLIENT,
                     JsonConvert.SerializeObject(
                         new Client.ClientConnectionResponseData()
@@ -119,7 +120,7 @@ namespace SiNet
                     return;
                 }
 
-                string sendClientConnectedMessage = MessageUtility.CreateMessage(
+                string sendClientConnectedMessage = MessageUtility.CreateMessageJson(
                     EventType.CLIENT_CONNECTED
                 );
                 clientSocket.Send(System.Text.Encoding.ASCII.GetBytes(sendClientConnectedMessage));
@@ -130,7 +131,6 @@ namespace SiNet
 
             private async void StartListeningToClient(ConnectedClientInfo clientInfo)
             {
-                DLog.Log(string.Format("SERVER: Listening to client {0}", clientInfo.clientId));
                 while (clientInfo.socket.Connected)
                 {
                     int bytesRead = await clientInfo.socket.ReceiveAsync(clientInfo.buffer, SocketFlags.None);
@@ -144,8 +144,12 @@ namespace SiNet
                     {
                         DLog.LogError(string.Format("SERVER: Invalid message received: {0}", System.Text.Encoding.ASCII.GetString(clientInfo.buffer, 0, bytesRead)));
                     }
+
+                    if (eventHandlers.ContainsKey(message.eventType))
+                    {
+                        eventHandlers[message.eventType].Invoke(clientInfo, message);
+                    }
                 }
-                DLog.Log(string.Format("SERVER: Stop listening to client {0}", clientInfo.clientId));
             }
 
             private void DisconnectClient(ConnectedClientInfo clientInfo)
@@ -153,6 +157,45 @@ namespace SiNet
                 clientInfo.socket.Close();
                 connectedClients.Remove(clientInfo.clientId);
                 DLog.Log(string.Format("SERVER: Client {0} disconnected", clientInfo.clientId));
+                OnClientDisconnected?.Invoke(clientInfo);
+            }
+
+            public void On(string eventType, System.Action<ConnectedClientInfo, Message> callback)
+            {
+                if (eventHandlers.ContainsKey(eventType))
+                {
+                    eventHandlers[eventType] += callback;
+                }
+                else
+                {
+                    eventHandlers.Add(eventType, callback);
+                }
+            }
+
+            public void RemoveEventHandler(string eventType, System.Action<ConnectedClientInfo, Message> callback)
+            {
+                if (eventHandlers.ContainsKey(eventType))
+                {
+                    eventHandlers[eventType] -= callback;
+                }
+            }
+
+            public void Send(ConnectedClientInfo clientInfo, Message message)
+            {
+                if (!clientInfo.socket.Connected) return;
+
+                clientInfo.socket.Send(System.Text.Encoding.ASCII.GetBytes(MessageUtility.CreateMessageJson(message.eventType, message.data)));
+            }
+
+            ~Server()
+            {
+                StopAcceptingClients();
+                foreach (ConnectedClientInfo clientInfo in connectedClients.Values)
+                {
+                    clientInfo.socket.Close();
+                }
+                serverSocket.Close();
+                Instances.Remove(this);
             }
         }
 
