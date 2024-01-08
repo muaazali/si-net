@@ -13,6 +13,9 @@ A lightweight asynchronous socket-based networking library built to serve as an 
 
 Si-Net, as the name suggests, provides simplified public facing methods to easily communicate between a server and multiple clients.
 
+> [!WARNING]  
+> This library is in alpha version of development and is not stable. Bugs, crashes, and breaking changes are expected. Please do not use in production till `v0.1-stable` is officially released.
+
 # Installation
 Support for UPM and NuGet coming soon.
 
