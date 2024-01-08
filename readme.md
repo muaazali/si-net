@@ -39,7 +39,8 @@ using SiNet.Server;
 ``` 
 To create a basic server that listens to an event from clients and performs an action on it:
 ```csharp
-server = new Server(new ServerConnectionSettings(5000));
+Server server = new Server(new ServerConnectionSettings(5000));
+
 server.On("HELLO_SERVER_FROM_CLIENT", (ConnectedClientInfo clientInfo, Message message) => {
     Console.WriteLine($"Client says: {message.data}");
     server.Send(clientInfo, "HELLO_CLIENT_FROM_SERVER", "What's up? Only you will see this message, not the other clients.");
@@ -55,7 +56,8 @@ using SiNet.Client;
 ``` 
 To create a basic client that connects to the server running your local machine, and listens to some events from the server and performs an action on it:
 ```csharp
-client = new Client(new ClientConnectionSettings("127.0.0.1", 5000));
+Client client = new Client(new ClientConnectionSettings("127.0.0.1", 5000));
+
 client.On("HELLO_CLIENT_FROM_SERVER", (Message message) => {
     Console.WriteLine($"Server says: {message.data}");
     client.Send("THANK_YOU_SERVER", "Thank you server, very cool.");
@@ -63,6 +65,8 @@ client.On("HELLO_CLIENT_FROM_SERVER", (Message message) => {
 client.On("HELLO_ALL_CLIENTS", (Message message) => {
     Console.WriteLine($"Server told all clients: {message.data}");
 });
+
+client.Send("HELLO_SERVER_FROM_CLIENT", "Hey server!");
 
 ```
 
