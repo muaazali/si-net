@@ -134,8 +134,14 @@ namespace SiNet
                 }
             }
 
-            public void Send(string eventType, string data = "")
+            public async void Send(string eventType, string data = "")
             {
+                // TODO Use a proper async await library like Cysharp.UniTasks.
+                while (serverSocket == null || !serverSocket.Connected || clientId == null || clientId == string.Empty)
+                {
+                    await System.Threading.Tasks.Task.Delay(100);
+                }
+
                 if (serverSocket == null)
                 {
                     return;
