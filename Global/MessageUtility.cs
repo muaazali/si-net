@@ -4,7 +4,7 @@ namespace SiNet
 {
     public class Message
     {
-        public string eventType;
+        public string eventName;
         public string data;
     }
 
@@ -14,7 +14,7 @@ namespace SiNet
         {
             return JsonConvert.SerializeObject(new Message()
             {
-                eventType = eventType,
+                eventName = eventType,
                 data = data
             });
         }

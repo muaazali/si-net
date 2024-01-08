@@ -35,7 +35,7 @@ namespace SiNet
 
                 int bytesRead = await serverSocket.ReceiveAsync(readBuffer, SocketFlags.None);
                 Message connectionMessage = MessageUtility.ParseMessage(Encoding.ASCII.GetString(readBuffer, 0, bytesRead));
-                if (connectionMessage == null || connectionMessage.eventType != EventType.CLIENT_ID_SENT_TO_CLIENT)
+                if (connectionMessage == null || connectionMessage.eventName != EventType.CLIENT_ID_SENT_TO_CLIENT)
                 {
                     DLog.LogError("CLIENT: Invalid message received. Could not receive client ID.");
                     return;
@@ -50,7 +50,7 @@ namespace SiNet
 
                 bytesRead = await serverSocket.ReceiveAsync(readBuffer, SocketFlags.None);
                 Message clientConnectedMessage = MessageUtility.ParseMessage(Encoding.ASCII.GetString(readBuffer, 0, bytesRead));
-                if (clientConnectedMessage == null || clientConnectedMessage.eventType != EventType.CLIENT_CONNECTED)
+                if (clientConnectedMessage == null || clientConnectedMessage.eventName != EventType.CLIENT_CONNECTED)
                 {
                     DLog.LogError("CLIENT: Invalid message received. Could not receive client ID.");
                     return;
@@ -107,7 +107,7 @@ namespace SiNet
                     }
 
                     DLog.Log(string.Format("CLIENT: Received message from server: {0}", JsonConvert.SerializeObject(message)));
-                    if (eventHandlers.TryGetValue(message.eventType, out System.Action<Message> eventHandler))
+                    if (eventHandlers.TryGetValue(message.eventName, out System.Action<Message> eventHandler))
                     {
                         eventHandler.Invoke(message);
                     }
@@ -134,13 +134,17 @@ namespace SiNet
                 }
             }
 
-            public void Send(Message message)
+            public void Send(string eventType, string data = "")
             {
                 if (serverSocket == null)
                 {
                     return;
                 }
-
+                Message message = new Message()
+                {
+                    eventName = eventType,
+                    data = data
+                };
                 DLog.Log(string.Format("CLIENT: Sending message to server: {0}", JsonConvert.SerializeObject(message)));
                 serverSocket.Send(Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(message)));
             }

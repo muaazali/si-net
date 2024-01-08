@@ -114,7 +114,7 @@ namespace SiNet
 
                 clientSocket.Receive(connectedClientInfo.buffer, SocketFlags.None);
                 Message clientReceivedMessage = MessageUtility.ParseMessage(System.Text.Encoding.ASCII.GetString(connectedClientInfo.buffer));
-                if (clientReceivedMessage == null || clientReceivedMessage.eventType != EventType.CLIENT_ID_RECEIVED)
+                if (clientReceivedMessage == null || clientReceivedMessage.eventName != EventType.CLIENT_ID_RECEIVED)
                 {
                     DLog.LogError(string.Format("SERVER: Invalid message received: {0}", System.Text.Encoding.ASCII.GetString(connectedClientInfo.buffer)));
                     return;
@@ -145,9 +145,9 @@ namespace SiNet
                         DLog.LogError(string.Format("SERVER: Invalid message received: {0}", System.Text.Encoding.ASCII.GetString(clientInfo.buffer, 0, bytesRead)));
                     }
 
-                    if (eventHandlers.ContainsKey(message.eventType))
+                    if (eventHandlers.ContainsKey(message.eventName))
                     {
-                        eventHandlers[message.eventType].Invoke(clientInfo, message);
+                        eventHandlers[message.eventName].Invoke(clientInfo, message);
                     }
                 }
             }
@@ -180,11 +180,24 @@ namespace SiNet
                 }
             }
 
-            public void Send(ConnectedClientInfo clientInfo, Message message)
+            public void Send(ConnectedClientInfo clientInfo, string eventName, string data = "")
             {
                 if (!clientInfo.socket.Connected) return;
 
-                clientInfo.socket.Send(System.Text.Encoding.ASCII.GetBytes(MessageUtility.CreateMessageJson(message.eventType, message.data)));
+                Message message = new Message()
+                {
+                    eventName = eventName,
+                    data = data
+                };
+                clientInfo.socket.Send(System.Text.Encoding.ASCII.GetBytes(MessageUtility.CreateMessageJson(message.eventName, message.data)));
+            }
+
+            public void SendToAll(string eventName, string data = "")
+            {
+                foreach (ConnectedClientInfo clientInfo in connectedClients.Values)
+                {
+                    Send(clientInfo, eventName, data);
+                }
             }
 
             ~Server()
