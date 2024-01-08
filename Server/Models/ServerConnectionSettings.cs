@@ -11,7 +11,7 @@ namespace SiNet
             public int port { get; private set; }
             public int maxClients { get; private set; }
 
-            public ServerConnectionSettings(string ip, int port, int maxClients = ConfigDefaults.MAX_CLIENTS)
+            public ServerConnectionSettings(int port = 5000, string ip = "127.0.0.1", int maxClients = ConfigDefaults.MAX_CLIENTS)
             {
                 this.ip = ip;
                 this.port = port;
