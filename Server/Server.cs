@@ -24,7 +24,11 @@ namespace SiNet
             private Socket serverSocket;
             private bool shouldAcceptClients = true;
 
+#pragma warning disable CS8618
+
             public Server(ServerConnectionSettings connectionSettings)
+#pragma warning restore CS8618
+
             {
                 if (Instances.Find(x => x.connectionSettings.ip == connectionSettings.ip && x.connectionSettings.port == connectionSettings.port) != null)
                 {
@@ -47,7 +51,8 @@ namespace SiNet
 
             private int StartListening()
             {
-                try {
+                try
+                {
                     serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                     serverSocket.Bind(new IPEndPoint(IPAddress.Parse(connectionSettings.ip), connectionSettings.port));
                     serverSocket.Listen(0);
@@ -83,7 +88,12 @@ namespace SiNet
 
             private void ProcessClientConnection(Socket clientSocket)
             {
-                string[] clientIP = clientSocket.RemoteEndPoint.ToString().Split(':');
+                if (clientSocket == null || !clientSocket.Connected) return;
+                if (clientSocket.RemoteEndPoint == null) return;
+
+                string[]? clientIP = clientSocket.RemoteEndPoint.ToString()?.Split(':');
+                if (clientIP == null || clientIP.Length != 2) return;
+
                 ConnectedClientInfo connectedClientInfo = new ConnectedClientInfo(clientIP[0], int.Parse(clientIP[1]), clientSocket, System.Guid.NewGuid().ToString());
 
                 if (connectedClients.Count < ConfigDefaults.MAX_CLIENTS)
@@ -143,6 +153,7 @@ namespace SiNet
                     if (message == null)
                     {
                         DLog.LogError(string.Format("SERVER: Invalid message received: {0}", System.Text.Encoding.ASCII.GetString(clientInfo.buffer, 0, bytesRead)));
+                        return;
                     }
 
                     if (eventHandlers.ContainsKey(message.eventName))
@@ -174,9 +185,9 @@ namespace SiNet
 
             public void RemoveEventHandler(string eventType, System.Action<ConnectedClientInfo, Message> callback)
             {
-                if (eventHandlers.ContainsKey(eventType))
+                if (eventHandlers.TryGetValue(eventType, out var eventHandler))
                 {
-                    eventHandlers[eventType] -= callback;
+                    eventHandler -= callback;
                 }
             }
 
