@@ -38,7 +38,7 @@ namespace SiNet
                 await serverSocket.ConnectAsync(connectionSettings.ip, connectionSettings.port);
 
                 int bytesRead = await serverSocket.ReceiveAsync(readBuffer, SocketFlags.None);
-                Message connectionMessage = MessageUtility.ParseMessage(Encoding.ASCII.GetString(readBuffer, 0, bytesRead));
+                Message? connectionMessage = MessageUtility.ParseMessage(Encoding.ASCII.GetString(readBuffer, 0, bytesRead));
                 if (connectionMessage == null || connectionMessage.eventName != EventType.CLIENT_ID_SENT_TO_CLIENT)
                 {
                     DLog.LogError("CLIENT: Invalid message received. Could not receive client ID.");
@@ -95,7 +95,7 @@ namespace SiNet
                         DisconnectFromServer();
                         break;
                     }
-                    Message message = MessageUtility.ParseMessage(Encoding.ASCII.GetString(readBuffer, 0, bytesRead));
+                    Message? message = MessageUtility.ParseMessage(Encoding.ASCII.GetString(readBuffer, 0, bytesRead));
                     if (message == null)
                     {
                         DLog.LogError(string.Format("CLIENT: Invalid message received: {0}", Encoding.ASCII.GetString(readBuffer, 0, bytesRead)));

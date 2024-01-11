@@ -136,7 +136,7 @@ namespace SiNet
                         DisconnectClient(clientInfo);
                         break;
                     }
-                    Message message = MessageUtility.ParseMessage(System.Text.Encoding.ASCII.GetString(clientInfo.buffer, 0, bytesRead));
+                    Message? message = MessageUtility.ParseMessage(System.Text.Encoding.ASCII.GetString(clientInfo.buffer, 0, bytesRead));
                     if (message == null)
                     {
                         DLog.LogError(string.Format("SERVER: Invalid message received: {0}", System.Text.Encoding.ASCII.GetString(clientInfo.buffer, 0, bytesRead)));

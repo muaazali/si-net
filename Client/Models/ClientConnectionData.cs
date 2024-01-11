@@ -5,7 +5,7 @@ namespace SiNet
         [System.Serializable]
         public class ClientConnectionResponseData
         {
-            public string clientId;
+            public string clientId = "";
         }
     }
 }

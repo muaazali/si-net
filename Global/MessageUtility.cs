@@ -4,13 +4,13 @@ namespace SiNet
 {
     public class Message
     {
-        public string eventName;
-        public string data;
+        public string eventName = "";
+        public string data = "";
     }
 
     public static class MessageUtility
     {
-        public static string CreateMessageJson(string eventType, string data = null)
+        public static string CreateMessageJson(string eventType, string data = "")
         {
             return JsonConvert.SerializeObject(new Message()
             {
@@ -19,7 +19,7 @@ namespace SiNet
             });
         }
 
-        public static Message ParseMessage(string message)
+        public static Message? ParseMessage(string message)
         {
             return JsonConvert.DeserializeObject<Message>(message);
         }
