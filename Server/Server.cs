@@ -122,19 +122,6 @@ namespace SiNet
                 );
                 clientSocket.Send(System.Text.Encoding.ASCII.GetBytes(sendClientIdMessage));
 
-                clientSocket.Receive(connectedClientInfo.buffer, SocketFlags.None);
-                Message clientReceivedMessage = MessageUtility.ParseMessage(System.Text.Encoding.ASCII.GetString(connectedClientInfo.buffer));
-                if (clientReceivedMessage == null || clientReceivedMessage.eventName != EventType.CLIENT_ID_RECEIVED)
-                {
-                    DLog.LogError(string.Format("SERVER: Invalid message received: {0}", System.Text.Encoding.ASCII.GetString(connectedClientInfo.buffer)));
-                    return;
-                }
-
-                string sendClientConnectedMessage = MessageUtility.CreateMessageJson(
-                    EventType.CLIENT_CONNECTED
-                );
-                clientSocket.Send(System.Text.Encoding.ASCII.GetBytes(sendClientConnectedMessage));
-
                 OnClientConnected?.Invoke(connectedClientInfo);
                 DLog.Log(string.Format("SERVER: Client connected from {0}. Total Clients: {1}", clientSocket.RemoteEndPoint.ToString(), connectedClients.Count));
             }
@@ -153,12 +140,12 @@ namespace SiNet
                     if (message == null)
                     {
                         DLog.LogError(string.Format("SERVER: Invalid message received: {0}", System.Text.Encoding.ASCII.GetString(clientInfo.buffer, 0, bytesRead)));
-                        return;
+                        continue;
                     }
 
                     if (eventHandlers.ContainsKey(message.eventName))
                     {
-                        eventHandlers[message.eventName].Invoke(clientInfo, message);
+                        eventHandlers[message.eventName]?.Invoke(clientInfo, message);
                     }
                 }
             }

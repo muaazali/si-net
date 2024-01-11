@@ -21,7 +21,11 @@ namespace SiNet
             private byte[] readBuffer = new byte[4096];
             private Socket serverSocket;
 
+#pragma warning disable CS8618
+
             public Client(ClientConnectionSettings connectionSettings)
+#pragma warning restore CS8618
+
             {
                 this.connectionSettings = connectionSettings;
                 ConnectToServer();
@@ -40,21 +44,13 @@ namespace SiNet
                     DLog.LogError("CLIENT: Invalid message received. Could not receive client ID.");
                     return;
                 }
-                ClientConnectionResponseData clientConnectionResponseData = JsonConvert.DeserializeObject<ClientConnectionResponseData>(connectionMessage.data);
-                clientId = clientConnectionResponseData.clientId;
-
-                string clientIdReceivedConfirmationMessage = MessageUtility.CreateMessageJson(
-                    EventType.CLIENT_ID_RECEIVED
-                );
-                await serverSocket.SendAsync(Encoding.ASCII.GetBytes(clientIdReceivedConfirmationMessage), SocketFlags.None);
-
-                bytesRead = await serverSocket.ReceiveAsync(readBuffer, SocketFlags.None);
-                Message clientConnectedMessage = MessageUtility.ParseMessage(Encoding.ASCII.GetString(readBuffer, 0, bytesRead));
-                if (clientConnectedMessage == null || clientConnectedMessage.eventName != EventType.CLIENT_CONNECTED)
+                ClientConnectionResponseData? clientConnectionResponseData = JsonConvert.DeserializeObject<ClientConnectionResponseData>(connectionMessage.data);
+                if (clientConnectionResponseData == null)
                 {
                     DLog.LogError("CLIENT: Invalid message received. Could not receive client ID.");
                     return;
                 }
+                clientId = clientConnectionResponseData.clientId;
 
                 DLog.Log(string.Format("CLIENT: Connected to server at {0}:{1}", connectionSettings.ip, connectionSettings.port));
                 OnConnectedToServer?.Invoke();
@@ -62,7 +58,7 @@ namespace SiNet
                 StartListeningToServer();
             }
 
-            public async void DisconnectFromServer()
+            public void DisconnectFromServer()
             {
                 if (serverSocket == null)
                 {
@@ -83,7 +79,6 @@ namespace SiNet
                 finally
                 {
                     serverSocket.Close();
-                    serverSocket = null;
 
                     OnDisconnectedFromServer?.Invoke();
                     DLog.Log(string.Format("CLIENT: Disconnected from server at {0}:{1}", connectionSettings.ip, connectionSettings.port));
@@ -104,12 +99,13 @@ namespace SiNet
                     if (message == null)
                     {
                         DLog.LogError(string.Format("CLIENT: Invalid message received: {0}", Encoding.ASCII.GetString(readBuffer, 0, bytesRead)));
+                        continue;
                     }
 
                     DLog.Log(string.Format("CLIENT: Received message from server: {0}", JsonConvert.SerializeObject(message)));
-                    if (eventHandlers.TryGetValue(message.eventName, out System.Action<Message> eventHandler))
+                    if (eventHandlers.ContainsKey(message.eventName))
                     {
-                        eventHandler.Invoke(message);
+                        eventHandlers[message.eventName]?.Invoke(message);
                     }
                 }
             }
@@ -128,9 +124,9 @@ namespace SiNet
 
             public void RemoveEventHandler(string eventType, System.Action<Message> callback)
             {
-                if (eventHandlers.ContainsKey(eventType))
+                if (eventHandlers.TryGetValue(eventType, out var eventHandler))
                 {
-                    eventHandlers[eventType] -= callback;
+                    eventHandler -= callback;
                 }
             }
 
