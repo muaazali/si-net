@@ -31,9 +31,9 @@ namespace SiNet.Server
 #pragma warning restore CS8618
 
         {
-            if (Instances.Find(x => x.connectionSettings.ip == connectionSettings.ip && x.connectionSettings.port == connectionSettings.port) != null)
+            if (Instances.Find(x => x.connectionSettings.port == connectionSettings.port) != null)
             {
-                DLog.LogError(string.Format("SERVER: A server is already running on {0}:{1}", this.connectionSettings.ip, this.connectionSettings.port));
+                DLog.LogError(string.Format("SERVER: A server is already running on {0}", this.connectionSettings.port));
                 return;
             }
 
@@ -45,22 +45,23 @@ namespace SiNet.Server
             int returnCode = StartListening();
             if (returnCode != 0)
             {
-                DLog.LogError(string.Format("SERVER: Failed to start server on {0}:{1}", this.connectionSettings.ip, this.connectionSettings.port));
+                DLog.LogError(string.Format("SERVER: Failed to start server on {0}", this.connectionSettings.port));
             }
 
             OnClientConnected += StartListeningToClient;
-
         }
 
         private int StartListening()
         {
             try
             {
-                serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                serverSocket.Bind(new IPEndPoint(IPAddress.Parse(connectionSettings.ip), connectionSettings.port));
-                serverSocket.Listen(0);
+                IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Any, connectionSettings.port);
+                serverSocket = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                serverSocket.Bind(ipEndPoint);
+                serverSocket.Listen();
+
                 StartAcceptingClients();
-                DLog.Log(string.Format("SERVER: Server started on {0}:{1}", connectionSettings.ip, connectionSettings.port));
+                DLog.Log(string.Format("SERVER: Server started on {0}", connectionSettings.port));
                 return 0;
             }
             catch (System.Exception e)
@@ -72,6 +73,7 @@ namespace SiNet.Server
 
         private async void StartAcceptingClients()
         {
+            DLog.Log(string.Format("SERVER: Started accepting clients. Total Clients: {0}", connectedClients.Count));
             while (shouldAcceptClients)
             {
                 Socket clientSocket = await serverSocket.AcceptAsync();
@@ -123,6 +125,7 @@ namespace SiNet.Server
 
         public void Send(ConnectedClientInfo clientInfo, string eventName, string data = "")
         {
+            if (clientInfo.socket == null) return;
             if (!clientInfo.socket.Connected) return;
 
             Message message = new Message()

@@ -16,6 +16,7 @@ namespace SiNet.Server
 
             public async void ListenToMessages(ConnectedClientInfo clientInfo)
             {
+                DLog.Log(string.Format("SERVER: Listening to messages from {0}", clientInfo.clientId));
                 while (clientInfo.socket.Connected)
                 {
                     try
@@ -44,6 +45,7 @@ namespace SiNet.Server
                         continue;
                     }
                 }
+                DLog.Log(string.Format("SERVER: Stopped listening to messages from {0}", clientInfo.clientId));
             }
         }
     }

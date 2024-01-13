@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Newtonsoft.Json;
@@ -18,7 +19,7 @@ namespace SiNet
             #endregion
 
             private Dictionary<string, System.Action<Message>> eventHandlers = new Dictionary<string, System.Action<Message>>();
-            private byte[] readBuffer = new byte[4096];
+            private byte[] readBuffer;
             private Socket serverSocket;
 
 #pragma warning disable CS8618
@@ -28,16 +29,18 @@ namespace SiNet
 
             {
                 this.connectionSettings = connectionSettings;
+                readBuffer = new byte[connectionSettings.maxPacketSize];
                 ConnectToServer();
             }
 
             private async void ConnectToServer()
             {
-                serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Parse(connectionSettings.ip), connectionSettings.port);
+                serverSocket = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
                 try
                 {
-                    await serverSocket.ConnectAsync(connectionSettings.ip, connectionSettings.port);
+                    await serverSocket.ConnectAsync(ipEndPoint);
                 }
                 catch (System.Exception e)
                 {
@@ -46,7 +49,9 @@ namespace SiNet
                 }
 
                 DLog.Log(string.Format("CLIENT: Connected to server at {0}:{1}", connectionSettings.ip, connectionSettings.port));
+
                 OnConnectedToServer?.Invoke();
+                On(EventType.CLIENT_ID_SENT_TO_CLIENT, OnReceiveConnectionResponseData);
 
                 StartListeningToServer();
             }
@@ -61,6 +66,7 @@ namespace SiNet
                 serverSocket.Close();
 
                 OnDisconnectedFromServer?.Invoke();
+                RemoveEventHandler(EventType.CLIENT_ID_SENT_TO_CLIENT, OnReceiveConnectionResponseData);
                 DLog.Log(string.Format("CLIENT: Disconnected from server at {0}:{1}", connectionSettings.ip, connectionSettings.port));
             }
 
@@ -127,7 +133,7 @@ namespace SiNet
                     return;
                 }
 
-                while (!serverSocket.Connected || clientId == null || clientId == string.Empty)
+                while (!serverSocket.Connected)
                 {
                     await System.Threading.Tasks.Task.Delay(100);
                 }
@@ -139,6 +145,17 @@ namespace SiNet
                 };
                 DLog.Log(string.Format("CLIENT: Sending message to server: {0}", JsonConvert.SerializeObject(message)));
                 serverSocket.Send(Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(message)));
+            }
+
+            private void OnReceiveConnectionResponseData(Message message)
+            {
+                ClientConnectionResponseData? data = JsonConvert.DeserializeObject<ClientConnectionResponseData>(message.data);
+                if (data == null)
+                {
+                    DLog.LogError("CLIENT: Failed to deserialize client connection response data.");
+                    return;
+                }
+                clientId = data.clientId;
             }
 
             ~Client()

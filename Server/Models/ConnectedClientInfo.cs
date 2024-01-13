@@ -12,13 +12,13 @@ namespace SiNet
             public string clientId { get; private set; }
             public byte[] buffer;
 
-            public ConnectedClientInfo(string ip, int port, Socket socket, string id)
+            public ConnectedClientInfo(string ip, int port, Socket socket, string id, int maxPacketSize)
             {
                 this.ip = ip;
                 this.port = port;
                 this.socket = socket;
                 this.clientId = id;
-                buffer = new byte[ConfigDefaults.MAX_PACKET_SIZE];
+                buffer = new byte[maxPacketSize];
             }
         }
 
