@@ -35,22 +35,15 @@ namespace SiNet
             {
                 serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-                await serverSocket.ConnectAsync(connectionSettings.ip, connectionSettings.port);
-
-                int bytesRead = await serverSocket.ReceiveAsync(readBuffer, SocketFlags.None);
-                Message? connectionMessage = MessageUtility.ParseMessage(Encoding.ASCII.GetString(readBuffer, 0, bytesRead));
-                if (connectionMessage == null || connectionMessage.eventName != EventType.CLIENT_ID_SENT_TO_CLIENT)
+                try
                 {
-                    DLog.LogError("CLIENT: Invalid message received. Could not receive client ID.");
+                    await serverSocket.ConnectAsync(connectionSettings.ip, connectionSettings.port);
+                }
+                catch (System.Exception e)
+                {
+                    DLog.LogError(string.Format("CLIENT: Failed to connect to server at {0}:{1}: {2}", connectionSettings.ip, connectionSettings.port, e.Message));
                     return;
                 }
-                ClientConnectionResponseData? clientConnectionResponseData = JsonConvert.DeserializeObject<ClientConnectionResponseData>(connectionMessage.data);
-                if (clientConnectionResponseData == null)
-                {
-                    DLog.LogError("CLIENT: Invalid message received. Could not receive client ID.");
-                    return;
-                }
-                clientId = clientConnectionResponseData.clientId;
 
                 DLog.Log(string.Format("CLIENT: Connected to server at {0}:{1}", connectionSettings.ip, connectionSettings.port));
                 OnConnectedToServer?.Invoke();
@@ -65,31 +58,27 @@ namespace SiNet
                     return;
                 }
 
-                string disconnectMessage = MessageUtility.CreateMessageJson(
-                    EventType.CLIENT_DISCONNECTED
-                );
-                try
-                {
-                    serverSocket.Send(Encoding.ASCII.GetBytes(disconnectMessage));
-                }
-                catch (System.Exception e)
-                {
-                    DLog.LogError(string.Format("CLIENT: Error sending disconnect message to server: {0}", e.Message));
-                }
-                finally
-                {
-                    serverSocket.Close();
+                serverSocket.Close();
 
-                    OnDisconnectedFromServer?.Invoke();
-                    DLog.Log(string.Format("CLIENT: Disconnected from server at {0}:{1}", connectionSettings.ip, connectionSettings.port));
-                }
+                OnDisconnectedFromServer?.Invoke();
+                DLog.Log(string.Format("CLIENT: Disconnected from server at {0}:{1}", connectionSettings.ip, connectionSettings.port));
             }
 
             private async void StartListeningToServer()
             {
                 while (serverSocket.Connected)
                 {
-                    int bytesRead = await serverSocket.ReceiveAsync(readBuffer, SocketFlags.None);
+                    int bytesRead = 0;
+                    try
+                    {
+                        bytesRead = await serverSocket.ReceiveAsync(readBuffer, SocketFlags.None);
+                    }
+                    catch (System.Exception e)
+                    {
+                        DLog.LogError(string.Format("CLIENT: Failed to receive message from server: {0}", e.Message));
+                        DisconnectFromServer();
+                        break;
+                    }
                     if (bytesRead == 0)
                     {
                         DisconnectFromServer();
@@ -132,16 +121,17 @@ namespace SiNet
 
             public async void Send(string eventType, string data = "")
             {
-                // TODO Use a proper async await library like Cysharp.UniTasks.
-                while (serverSocket == null || !serverSocket.Connected || clientId == null || clientId == string.Empty)
+                if (serverSocket == null)
+                {
+                    DLog.LogError("CLIENT: Cannot send message to server. Not connected to server.");
+                    return;
+                }
+
+                while (!serverSocket.Connected || clientId == null || clientId == string.Empty)
                 {
                     await System.Threading.Tasks.Task.Delay(100);
                 }
 
-                if (serverSocket == null)
-                {
-                    return;
-                }
                 Message message = new Message()
                 {
                     eventName = eventType,
