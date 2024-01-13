@@ -21,7 +21,7 @@ Support for UPM and NuGet coming soon.
 
 ## Recommended Method: Git Submodule
 Inside your project repository:
-`git submodule add https://github.com/chaconinc/DbConnector`
+`git submodule add https://github.com/muaazali/si-net`
 
 ## Alternative Method:
 Clone/Download the reposity into the project folder.
@@ -77,10 +77,12 @@ client.Send("HELLO_SERVER_FROM_CLIENT", "Hey server!");
 Detailed documentation coming soon. Refer to [Usage](#usage) for now.
 
 # Planned Features
+## v0.1
+- (COMPLETED) Support for better client connection events. Indicate other clients when a new client has joined.
+- (COMPLETED) Add better exception handling.
+- (IN PROGRESS) Add compatibility with other socket libraries.
 ## v0.1.1
-- Support for better client connection events. Indicate other clients when a new client has joined.
-- Add better exception handling.
-- Better documentation.
+- Support for WebSockets.
 ## v0.2
 - Support for rooms.
 - Support for RPCs.
